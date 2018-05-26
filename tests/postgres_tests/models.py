@@ -145,6 +145,10 @@ class ReturningModel(PostgreSQLModel):
     created = models.DateTimeField(default=Now, returning=True)
 
 
+class MTIReturning(ReturningModel):
+    created_2 = models.DateTimeField(default=Now, returning=True)
+
+
 class JSONModel(PostgreSQLModel):
     field = JSONField(blank=True, null=True)
     field_custom = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)

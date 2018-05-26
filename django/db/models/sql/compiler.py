@@ -1119,7 +1119,6 @@ class SQLCompiler:
 
 
 class SQLInsertCompiler(SQLCompiler):
-    return_id = False
 
     def field_as_sql(self, field, val):
         """
@@ -1243,11 +1242,11 @@ class SQLInsertCompiler(SQLCompiler):
         # queries and generate their own placeholders. Doing that isn't
         # necessary and it should be possible to use placeholders and
         # expressions in bulk inserts too.
-        can_bulk = (not self.return_id and self.connection.features.has_bulk_insert)
+        can_bulk = self.connection.features.has_bulk_insert
 
         placeholder_rows, param_rows = self.assemble_as_sql(fields, value_rows)
 
-        if self.return_id and self.connection.features.can_return_id_from_insert:
+        if self.connection.features.can_return_id_from_insert:
             if self.connection.features.can_return_ids_from_bulk_insert:
                 result.append(self.connection.ops.bulk_insert_sql(fields, placeholder_rows))
                 params = param_rows
@@ -1260,7 +1259,7 @@ class SQLInsertCompiler(SQLCompiler):
             columns = []
             for field in opts.returning:
                 columns.append("%s.%s" % (qn(opts.db_table), qn(field.column)))
-            if r_fmt:
+            if r_fmt and columns:
                 result.append(r_fmt % ", ".join(columns))
                 params += [r_params]
             return [(" ".join(result), tuple(chain.from_iterable(params)))]
@@ -1274,17 +1273,14 @@ class SQLInsertCompiler(SQLCompiler):
                 for p, vals in zip(placeholder_rows, param_rows)
             ]
 
-    def execute_sql(self, return_id=False):
+    def execute_sql(self):
         assert not (
-            return_id and len(self.query.objs) != 1 and
+            len(self.query.objs) != 1 and
             not self.connection.features.can_return_ids_from_bulk_insert
         )
-        self.return_id = return_id
         with self.connection.cursor() as cursor:
             for sql, params in self.as_sql():
                 cursor.execute(sql, params)
-            if not return_id:
-                return []
             if self.connection.features.can_return_ids_from_bulk_insert and len(self.query.objs) > 1:
                 return self.connection.ops.fetch_returned_insert_ids(cursor)
             if self.connection.features.can_return_id_from_insert:

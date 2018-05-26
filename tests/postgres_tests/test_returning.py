@@ -5,7 +5,7 @@ from django.db.models.sql import InsertQuery
 from django.test import modify_settings
 
 from . import PostgreSQLTestCase
-from .models import JSONModel, ReturningModel
+from .models import JSONModel, ReturningModel, MTIReturning
 
 
 @modify_settings(INSTALLED_APPS={'append': 'django.contrib.postgres'})
@@ -35,5 +35,12 @@ class ReturningValuesTestCase(PostgreSQLTestCase):
         # ReturningModel uses database functions not python defaults
         obj = ReturningModel()
         obj.save()
-        self.assertEquals(obj.pk, 1)
+        self.assertIsNotNone(obj.pk)
         self.assertIsInstance(obj.created, datetime.datetime)
+
+    def test_mti(self):
+        obj = MTIReturning()
+        obj.save()
+        self.assertIsNotNone(obj.pk)
+        self.assertIsInstance(obj.created, datetime.datetime)
+        self.assertIsInstance(obj.created_2, datetime.datetime)

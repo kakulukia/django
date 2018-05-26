@@ -829,6 +829,8 @@ class Options:
     @cached_property
     def returning(self):
         return [
-            field for field in self.local_fields
+            field for field in self._get_fields(
+                forward=True, reverse=False, include_parents=PROXY_PARENTS
+            )
             if field.returning
         ]

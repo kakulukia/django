@@ -7,7 +7,7 @@ from ..fields import (
     DateRangeField, DateTimeRangeField, FloatRangeField, HStoreField,
     IntegerRangeField, JSONField, SearchVectorField,
 )
-from ..models import TagField
+from ..models import TagField, ReturningModel
 
 
 class Migration(migrations.Migration):
@@ -257,5 +257,15 @@ class Migration(migrations.Migration):
                 'required_db_vendor': 'postgresql'
             },
             bases=(models.Model,)
+        ),
+        migrations.CreateModel(
+            'MTIReturning',
+            fields=[
+                ('created_2', models.DateTimeField(default=Now, returning=True))
+            ],
+            options={
+                'required_db_vendor': 'postgresql'
+            },
+            bases=(ReturningModel, )
         )
     ]

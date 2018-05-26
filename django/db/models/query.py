@@ -465,8 +465,9 @@ class QuerySet:
                 ids = self._batched_insert(objs_without_pk, fields, batch_size)
                 if connection.features.can_return_ids_from_bulk_insert:
                     assert len(ids) == len(objs_without_pk)
-                for obj_without_pk, pk in zip(objs_without_pk, ids):
-                    obj_without_pk.pk = pk
+                for obj_without_pk, results in zip(objs_without_pk, ids):
+                    for result, field in zip(results, self.model._meta.returning):
+                        setattr(obj_without_pk, field.attname, result)
                     obj_without_pk._state.adding = False
                     obj_without_pk._state.db = self.db
 
@@ -1120,7 +1121,7 @@ class QuerySet:
     # PRIVATE METHODS #
     ###################
 
-    def _insert(self, objs, fields, return_id=False, raw=False, using=None):
+    def _insert(self, objs, fields, raw=False, using=None):
         """
         Insert a new record for the given model. This provides an interface to
         the InsertQuery class and is how Model.save() is implemented.
@@ -1130,7 +1131,7 @@ class QuerySet:
             using = self.db
         query = sql.InsertQuery(self.model)
         query.insert_values(fields, objs, raw=raw)
-        return query.get_compiler(using=using).execute_sql(return_id)
+        return query.get_compiler(using=using).execute_sql()
     _insert.alters_data = True
     _insert.queryset_only = False
 
@@ -1143,7 +1144,7 @@ class QuerySet:
         inserted_ids = []
         for item in [objs[i:i + batch_size] for i in range(0, len(objs), batch_size)]:
             if connections[self.db].features.can_return_ids_from_bulk_insert:
-                inserted_id = self._insert(item, fields=fields, using=self.db, return_id=True)
+                inserted_id = self._insert(item, fields=fields, using=self.db)
                 if isinstance(inserted_id, list):
                     inserted_ids.extend(inserted_id)
                 else:
