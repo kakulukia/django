@@ -1,5 +1,6 @@
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from django.db.models.functions import Now
 
 from .fields import (
     ArrayField, BigIntegerRangeField, CICharField, CIEmailField, CITextField,
@@ -138,6 +139,10 @@ class RangeLookupsModel(PostgreSQLModel):
     float = models.FloatField(blank=True, null=True)
     timestamp = models.DateTimeField(blank=True, null=True)
     date = models.DateField(blank=True, null=True)
+
+
+class ReturningModel(PostgreSQLModel):
+    created = models.DateTimeField(default=Now, returning=True)
 
 
 class JSONModel(PostgreSQLModel):

@@ -825,3 +825,10 @@ class Options:
             if isinstance(attr, property):
                 names.append(name)
         return frozenset(names)
+
+    @cached_property
+    def returning(self):
+        return [
+            field for field in self.local_fields
+            if field.returning
+        ]

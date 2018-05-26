@@ -1254,12 +1254,14 @@ class SQLInsertCompiler(SQLCompiler):
             else:
                 result.append("VALUES (%s)" % ", ".join(placeholder_rows[0]))
                 params = [param_rows[0]]
-            col = "%s.%s" % (qn(opts.db_table), qn(opts.pk.column))
             r_fmt, r_params = self.connection.ops.return_insert_id()
             # Skip empty r_fmt to allow subclasses to customize behavior for
             # 3rd party backends. Refs #19096.
+            columns = []
+            for field in opts.returning:
+                columns.append("%s.%s" % (qn(opts.db_table), qn(field.column)))
             if r_fmt:
-                result.append(r_fmt % col)
+                result.append(r_fmt % ", ".join(columns))
                 params += [r_params]
             return [(" ".join(result), tuple(chain.from_iterable(params)))]
 
@@ -1282,7 +1284,7 @@ class SQLInsertCompiler(SQLCompiler):
             for sql, params in self.as_sql():
                 cursor.execute(sql, params)
             if not return_id:
-                return
+                return []
             if self.connection.features.can_return_ids_from_bulk_insert and len(self.query.objs) > 1:
                 return self.connection.ops.fetch_returned_insert_ids(cursor)
             if self.connection.features.can_return_id_from_insert:

@@ -68,7 +68,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         statement into a table that has an auto-incrementing ID, return the
         list of newly created IDs.
         """
-        return [item[0] for item in cursor.fetchall()]
+        return cursor.fetchall()
 
     def lookup_cast(self, lookup_type, internal_type=None):
         lookup = '%s'

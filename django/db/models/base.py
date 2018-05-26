@@ -827,9 +827,9 @@ class Model(metaclass=ModelBase):
                 fields = [f for f in fields if f is not meta.auto_field]
 
             update_pk = meta.auto_field and not pk_set
-            result = self._do_insert(cls._base_manager, using, fields, update_pk, raw)
-            if update_pk:
-                setattr(self, meta.pk.attname, result)
+            results = self._do_insert(cls._base_manager, using, fields, update_pk, raw)
+            for result, field in zip(results, meta.returning):
+                setattr(self, field.attname, result)
         return updated
 
     def _do_update(self, base_qs, using, pk_val, values, update_fields, forced_update):

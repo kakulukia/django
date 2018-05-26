@@ -178,7 +178,7 @@ class BaseDatabaseOperations:
         statement into a table that has an auto-incrementing ID, return the
         newly created ID.
         """
-        return cursor.fetchone()[0]
+        return cursor.fetchone()
 
     def field_cast_sql(self, db_type, internal_type):
         """
@@ -251,7 +251,7 @@ class BaseDatabaseOperations:
 
         `pk_name` is the name of the primary-key column.
         """
-        return cursor.lastrowid
+        return [cursor.lastrowid]
 
     def lookup_cast(self, lookup_type, internal_type=None):
         """

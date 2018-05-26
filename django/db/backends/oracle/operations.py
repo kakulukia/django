@@ -222,7 +222,7 @@ END;
 
     def fetch_returned_insert_id(self, cursor):
         try:
-            return int(cursor._insert_id_var.getvalue())
+            return [int(cursor._insert_id_var.getvalue())]
         except (IndexError, TypeError):
             # cx_Oracle < 6.3 returns None, >= 6.3 raises IndexError.
             raise DatabaseError(
@@ -258,7 +258,7 @@ END;
     def last_insert_id(self, cursor, table_name, pk_name):
         sq_name = self._get_sequence_name(cursor, strip_quotes(table_name), pk_name)
         cursor.execute('"%s".currval' % sq_name)
-        return cursor.fetchone()[0]
+        return cursor.fetchone()
 
     def lookup_cast(self, lookup_type, internal_type=None):
         if lookup_type in ('iexact', 'icontains', 'istartswith', 'iendswith'):

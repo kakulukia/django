@@ -1,5 +1,6 @@
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import migrations, models
+from django.db.models.functions import Now
 
 from ..fields import (
     ArrayField, BigIntegerRangeField, CICharField, CIEmailField, CITextField,
@@ -246,4 +247,15 @@ class Migration(migrations.Migration):
             },
             bases=(models.Model,),
         ),
+        migrations.CreateModel(
+            'ReturningModel',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('created', models.DateTimeField(default=Now, returning=True))
+            ],
+            options={
+                'required_db_vendor': 'postgresql'
+            },
+            bases=(models.Model,)
+        )
     ]
