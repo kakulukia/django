@@ -60,7 +60,9 @@ class SeleniumTestCaseBase(type(LiveServerTestCase)):
 
     @classmethod
     def import_webdriver(cls, browser):
-        return import_string("selenium.webdriver.%s.webdriver.WebDriver" % browser)
+        options = import_string("selenium.webdriver.%s.options.Options" % browser)()
+        options.headless = True
+        return import_string("selenium.webdriver.%s.webdriver.WebDriver" % browser)(options=options)
 
     @classmethod
     def get_capability(cls, browser):
@@ -74,7 +76,7 @@ class SeleniumTestCaseBase(type(LiveServerTestCase)):
                 command_executor=self.selenium_hub,
                 desired_capabilities=self.get_capability(self.browser),
             )
-        return self.import_webdriver(self.browser)()
+        return self.import_webdriver(self.browser)
 
 
 @tag('selenium')
