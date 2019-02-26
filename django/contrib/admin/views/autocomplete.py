@@ -1,3 +1,5 @@
+from django.apps import apps
+from django.core.exceptions import FieldDoesNotExist
 from django.http import Http404, JsonResponse
 from django.views.generic.list import BaseListView
 
@@ -5,7 +7,7 @@ from django.views.generic.list import BaseListView
 class AutocompleteJsonView(BaseListView):
     """Handle AutocompleteWidget's AJAX requests for data."""
     paginate_by = 20
-    model_admin = None
+    admin_site = None
 
     def get(self, request, *args, **kwargs):
         """
@@ -15,6 +17,34 @@ class AutocompleteJsonView(BaseListView):
             pagination: {more: true}
         }
         """
+        self.term = request.GET.get('term', '')
+
+        try:
+            app_label = request.GET['app_label']
+            model_name = request.GET['model_name']
+            field_name = request.GET['field_name']
+        except KeyError:
+            return JsonResponse({'error': '403 Forbidden'}, status=403)
+
+        try:
+            source_model = apps.get_model(app_label, model_name)
+        except LookupError:
+            return JsonResponse({'error': '403 Forbidden'}, status=403)
+
+        try:
+            self.source_field = source_model._meta.get_field(field_name)
+        except FieldDoesNotExist:
+            return JsonResponse({'error': '403 Forbidden'}, status=403)
+
+        try:
+            remote_model = self.source_field.remote_field.model
+        except AttributeError:
+            return JsonResponse({'error': '403 Forbidden'}, status=403)
+        try:
+            self.model_admin = self.admin_site._registry[remote_model]
+        except KeyError:
+            return JsonResponse({'error': '403 Forbidden'}, status=403)
+
         if not self.model_admin.get_search_fields(request):
             raise Http404(
                 '%s must have search_fields for the autocomplete_view.' %
@@ -23,12 +53,15 @@ class AutocompleteJsonView(BaseListView):
         if not self.has_perm(request):
             return JsonResponse({'error': '403 Forbidden'}, status=403)
 
-        self.term = request.GET.get('term', '')
+        to_field_name = getattr(self.source_field.remote_field, 'field_name', self.model_admin.model._meta.pk.name)
+        if not self.model_admin.to_field_allowed(request, to_field_name):
+            return JsonResponse({'error': '403 Forbidden'}, status=403)
+
         self.object_list = self.get_queryset()
         context = self.get_context_data()
         return JsonResponse({
             'results': [
-                {'id': str(obj.pk), 'text': str(obj)}
+                {'id': str(getattr(obj, to_field_name)), 'text': str(obj)}
                 for obj in context['object_list']
             ],
             'pagination': {'more': context['page_obj'].has_next()},
@@ -41,6 +74,7 @@ class AutocompleteJsonView(BaseListView):
     def get_queryset(self):
         """Return queryset based on ModelAdmin.get_search_results()."""
         qs = self.model_admin.get_queryset(self.request)
+        qs = qs.complex_filter(self.source_field.get_limit_choices_to())
         qs, search_use_distinct = self.model_admin.get_search_results(self.request, qs, self.term)
         if search_use_distinct:
             qs = qs.distinct()
