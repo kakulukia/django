@@ -8,13 +8,19 @@ from django.core.management.color import no_style
 from django.db import (
     DatabaseError, DataError, IntegrityError, OperationalError, connection,
 )
-from django.db.models import (
-    CASCADE, PROTECT, AutoField, BigAutoField, BigIntegerField, BinaryField,
-    BooleanField, CharField, CheckConstraint, DateField, DateTimeField,
-    ForeignKey, ForeignObject, Index, IntegerField, ManyToManyField, Model,
-    OneToOneField, PositiveIntegerField, Q, SlugField, SmallAutoField,
-    SmallIntegerField, TextField, TimeField, UniqueConstraint, UUIDField,
+from django.db.models import ExpressionWrapper, Index, Model, Q, Value
+from django.db.models.constraints import CheckConstraint, UniqueConstraint
+from django.db.models.deletion import CASCADE, PROTECT
+from django.db.models.fields import (
+    AutoField, BigAutoField, BigIntegerField, BinaryField, BooleanField,
+    CharField, DateField, DateTimeField, IntegerField, PositiveIntegerField,
+    SlugField, SmallAutoField, SmallIntegerField, TextField, TimeField,
+    UUIDField,
 )
+from django.db.models.fields.related import (
+    ForeignKey, ForeignObject, ManyToManyField, OneToOneField,
+)
+from django.db.models.functions import Now, TruncDay
 from django.db.transaction import TransactionManagementError, atomic
 from django.test import (
     TransactionTestCase, skipIfDBFeature, skipUnlessDBFeature,
@@ -2684,6 +2690,116 @@ class SchemaTests(TransactionTestCase):
             cursor.execute("SELECT surname FROM schema_author;")
             item = cursor.fetchall()[0]
             self.assertEqual(item[0], None if connection.features.interprets_empty_strings_as_nulls else '')
+
+    @skipUnlessDBFeature('can_return_columns_from_insert')
+    def test_add_field_default_db_returning(self):
+        # Create the table.
+        with connection.schema_editor() as editor:
+            editor.create_model(Author)
+        # Add new field with database default.
+        Author.objects.create(name='author 1')
+        new_field = DateTimeField(default=Now())
+        new_field.set_attributes_from_name('db_returning')
+        with connection.schema_editor() as editor:
+            editor.add_field(Author, new_field)
+        # Field was added with the right default.
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT db_returning FROM schema_author;")
+            item = cursor.fetchall()[0]
+        self.assertIsNotNone(item[0])
+
+    @skipUnlessDBFeature('can_return_columns_from_insert')
+    def test_alter_field_default_db_returning(self):
+        # Create the table.
+        with connection.schema_editor() as editor:
+            editor.create_model(BookWithoutAuthor)
+        BookWithoutAuthor.objects.create(title='book 1', pub_date=datetime.datetime.now())
+        # Alter to add field with database default.
+        old_field = BookWithoutAuthor._meta.get_field('pub_date')
+        new_field = DateTimeField(default=Now)
+        new_field.set_attributes_from_name('pub_date')
+        with connection.schema_editor() as editor:
+            editor.alter_field(BookWithoutAuthor, old_field, new_field, strict=True)
+
+    @skipUnlessDBFeature('can_return_columns_from_insert')
+    def test_create_model_default_db_returning(self):
+        # Create the table.
+        with connection.schema_editor() as editor:
+            with self.assertLogs('django.db.backends.schema', 'DEBUG') as cm:
+                editor.create_model(Author)
+
+        if connection.vendor == "oracle":
+            self.assertIn(
+                '"DATE_OF_BIRTH" TIMESTAMP NOT NULL',
+                cm.records[0].sql
+            )
+        else:
+            self.assertIn(
+                '"date_of_birth" timestamp with time zone NOT NULL',
+                cm.records[0].sql
+            )
+        self.assertEqual(cm.records[0].params, None)
+
+    @skipUnlessDBFeature('can_return_columns_from_insert')
+    def test_add_field_default_db_returning_expression(self):
+        # Create the table.
+        with connection.schema_editor() as editor:
+            editor.create_model(Author)
+        # Add database default to a nullable field.
+        new_field = IntegerField(default=ExpressionWrapper(Value(1) * Value(3), output_field=IntegerField()))
+        new_field.set_attributes_from_name('place_of_birth')
+        with connection.schema_editor() as editor:
+            with self.assertLogs('django.db.backends.schema', 'DEBUG') as cm:
+                editor.add_field(Author, new_field)
+
+        if connection.vendor == 'oracle':
+            self.assertEqual(
+                cm.records[0].sql,
+                'ALTER TABLE "SCHEMA_AUTHOR" ADD "PLACE_OF_BIRTH" NUMBER(11) DEFAULT (1 * 3) NOT NULL'
+            )
+        else:
+            self.assertEqual(
+                cm.records[0].sql,
+                'ALTER TABLE "schema_author" ADD COLUMN "place_of_birth" integer DEFAULT (%s * %s) NOT NULL'
+            )
+            self.assertEqual(cm.records[0].params, (1, 3))
+
+    @skipUnlessDBFeature('can_return_columns_from_insert')
+    def test_alter_nullable_field_default_db_returning(self):
+        # Create the table.
+        with connection.schema_editor() as editor:
+            editor.create_model(Author)
+        # Add database default to a nullable field.
+        old_field = Author._meta.get_field('weight')
+        new_field = IntegerField(default=ExpressionWrapper(Value(1) * Value(3), output_field=IntegerField()))
+        new_field.set_attributes_from_name('weight')
+        with connection.schema_editor() as editor:
+            with self.assertLogs('django.db.backends.schema', 'DEBUG') as cm:
+                editor.alter_field(Author, old_field, new_field, strict=True)
+
+        if connection.vendor == 'oracle':
+            self.assertEqual(
+                cm.records[0].sql,
+                'ALTER TABLE "SCHEMA_AUTHOR" MODIFY "WEIGHT" DEFAULT (1 * 3)'
+            )
+        else:
+            self.assertEqual(
+                cm.records[0].sql,
+                'ALTER TABLE "schema_author" ALTER COLUMN "weight" SET DEFAULT (%s * %s)'
+            )
+            self.assertEqual(cm.records[0].params, (1, 3))
+
+    @skipUnlessDBFeature('can_return_columns_from_insert')
+    def test_effective_default_db_default(self):
+        """#31206 - effective_default() should be handle database defaults"""
+        new_field = DateTimeField(default=TruncDay(Now()))
+        new_field.set_attributes_from_name('date_of_birth')
+        with connection.schema_editor() as editor:
+            editor.create_model(Author)
+            # unit test
+            editor.effective_default(DateTimeField(default=Now()))
+            # integration test
+            editor.alter_field(Author, Author._meta.get_field('date_of_birth'), new_field)
 
     def test_add_field_default_dropped(self):
         # Create the table

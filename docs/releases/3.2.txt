@@ -294,6 +294,9 @@ Models
   :class:`~django.db.models.functions.TruncDate` and
   :class:`~django.db.models.functions.TruncTime` database functions allows
   truncating datetimes in a specific timezone.
+* The MariaDB, Oracle and PostgreSQL backends support
+  :doc:`Query Expressions </ref/models/expressions>` as
+  :attr:`~django.db.models.Field.default` values for model fields.
 
 Pagination
 ~~~~~~~~~~

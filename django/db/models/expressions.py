@@ -561,6 +561,8 @@ class TemporalSubtraction(CombinedExpression):
 class F(Combinable):
     """An object capable of resolving references to existing query objects."""
 
+    contains_column_references = True
+
     def __init__(self, name):
         """
         Arguments:

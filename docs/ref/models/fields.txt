@@ -363,6 +363,28 @@ The default value is used when new model instances are created and a value
 isn't provided for the field. When the field is a primary key, the default is
 also used when the field is set to ``None``.
 
+.. versionadded:: 3.2
+
+The MariaDB, Oracle and PostgreSQL database backends support
+:doc:`Query Expressions </ref/models/expressions>` as ``default`` values::
+
+    from django.db import models
+    from django.db.models.functions import ExtractYear, Now, Pi
+
+    class ReturningModel(models.Model)
+        created = models.DateTimeField(editable=False, default=Now())
+        pi = models.FloatField(default=Pi())
+        year = models.PositiveSmallIntegerField(default=ExtractYear(Now()))
+
+.. note::
+    The query expressions are not stored in the database as column default
+    values, but expressions are passed directly to the database during inserts
+    and updates. Therefore, the defaults will not be available should you
+    perform any raw SQL ``INSERT`` or ``UPDATE``; you must explicitly provide
+    an equivalent SQL expression. You will not be able to use the ``DEFAULT` or
+    ``DEFAULT VALUES`` keywords to populate columns for fields using query
+    expressions.
+
 ``editable``
 ------------
 

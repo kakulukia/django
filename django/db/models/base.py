@@ -899,7 +899,7 @@ class Model(metaclass=ModelBase):
             results = self._do_insert(cls._base_manager, using, fields, returning_fields, raw)
             if results:
                 for value, field in zip(results[0], returning_fields):
-                    setattr(self, field.attname, value)
+                    setattr(self, field.attname, field.to_python(value))
         return updated
 
     def _do_update(self, base_qs, using, pk_val, values, update_fields, forced_update):

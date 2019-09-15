@@ -3,6 +3,7 @@ import uuid
 
 from django.core.checks import Error, Warning as DjangoWarning
 from django.db import connection, models
+from django.db.models.functions import Now
 from django.test import (
     SimpleTestCase, TestCase, skipIfDBFeature, skipUnlessDBFeature,
 )
@@ -331,6 +332,35 @@ class CharFieldTests(SimpleTestCase):
                         "in 'choices' (%d characters)." % choice_max_length,
                         obj=field,
                         id='fields.E009',
+                    ),
+                ])
+
+    def test_default_expressions(self):
+        class Model(models.Model):
+            created = models.DateField(default=Now())
+
+        field = Model._meta.get_field('created')
+        self.assertEqual(field.check(), [])
+
+    def test_default_expressions_failure(self):
+        class Model(models.Model):
+            q = models.BooleanField(default=models.Q(pk__gte=100))
+            wrapped_q = models.BooleanField(
+                default=models.ExpressionWrapper(models.Q(pk__gte=100), output_field=models.BooleanField())
+            )
+            max_pk = models.BooleanField(
+                default=models.Max('pk')
+            )
+
+        for name in ('q', 'wrapped_q', 'max_pk'):
+            with self.subTest(name):
+                field = Model._meta.get_field(name)
+                self.assertEqual(field.check(), [
+                    Error(
+                        "'default' expressions cannot reference other fields"
+                        " (e.g. not contain a Q, or F expression).",
+                        obj=field,
+                        id='fields.E011',
                     ),
                 ])
 

@@ -198,6 +198,7 @@ class Field(RegisterLookupMixin):
         return [
             *self._check_field_name(),
             *self._check_choices(),
+            *self._check_default_expressions(),
             *self._check_db_index(),
             *self._check_null_allowed_for_primary_keys(),
             *self._check_backend_specific_checks(**kwargs),
@@ -236,6 +237,15 @@ class Field(RegisterLookupMixin):
             ]
         else:
             return []
+
+    def _check_default_expressions(self):
+        if hasattr(self.default, 'contains_column_references') and self.default.contains_column_references:
+            return [checks.Error(
+                "'default' expressions cannot reference other fields (e.g. not contain a Q, or F expression).",
+                obj=self,
+                id='fields.E011',
+            )]
+        return []
 
     @classmethod
     def _choices_is_value(cls, value):
@@ -743,7 +753,7 @@ class Field(RegisterLookupMixin):
         Private API intended only to be used by Django itself. Currently only
         the PostgreSQL backend supports returning multiple fields on a model.
         """
-        return False
+        return self.has_default() and hasattr(self.default, 'as_sql')
 
     def set_attributes_from_name(self, name):
         self.name = self.name or name
@@ -2322,6 +2332,8 @@ class UUIDField(Field):
     def get_db_prep_value(self, value, connection, prepared=False):
         if value is None:
             return None
+        if hasattr(value, 'as_sql'):
+            return value
         if not isinstance(value, uuid.UUID):
             value = self.to_python(value)
 

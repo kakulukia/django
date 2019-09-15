@@ -64,6 +64,7 @@ class Q(tree.Node):
     OR = 'OR'
     default = AND
     conditional = True
+    contains_column_references = True
 
     def __init__(self, *args, _connector=None, _negated=False, **kwargs):
         super().__init__(children=[*args, *sorted(kwargs.items())], connector=_connector, negated=_negated)
