@@ -1,0 +1,201 @@
+name: CI
+on: [push, pull_request]
+jobs:
+
+  flake8:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v1.1.1
+      - uses: actions/checkout@v1
+      - run: python -m pip install flake8
+      - run: flake8
+
+  isort:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v1.1.1
+      - uses: actions/checkout@v1
+      - run: python -m pip install --upgrade isort
+      - run: isort --recursive --check-only --diff django tests scripts
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v1.1.1
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install sphinx pyenchant sphinxcontrib-spelling
+      - run: |
+          cd docs
+          sphinx-build -b spelling -n -q -w doc_warnings -d _build/doctrees -D language=en_US . _build/spelling
+
+  SQLite:
+    needs: [flake8, isort]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+        os:
+          - ubuntu-latest
+        # we currently test windows only on Python 3.8
+        # - windows-latest
+        # we currently don't test on MacOS
+        # - macos-latest
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1.1.1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: sudo apt-get install libmemcached-dev
+        if: matrix.os == 'ubuntu-latest'
+      - run: brew install libmemcached
+        if: matrix.os == 'macos-latest'
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+      - run: tests/runtests.py
+
+  Windows:
+    needs: [flake8, isort]
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1.1.1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+      - run: tests/runtests.py
+
+  PostgreSQL:
+    needs: [flake8, isort]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1.1.1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: sudo apt-get install libmemcached-dev
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+      - name: Install PostgreSQL
+        run: |
+          sudo apt-get install -y postgresql
+          sudo -u postgres createuser -s -w runner
+      - run: python -m pip install -r tests/requirements/postgres.txt
+      - run: tests/runtests.py --settings=tests.test_postgres -v3 --parallel=1
+
+  PostGIS:
+    needs: [postgresql]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1.1.1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: sudo apt-get install libmemcached-dev
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+      - name: Install PostgreSQL
+        run: |
+          sudo apt-get install -y postgis
+          sudo -u postgres createuser -s -w runner
+      - run: python -m pip install -r tests/requirements/postgres.txt
+      - run: tests/runtests.py --settings=tests.test_postgis -v3
+
+  MySQL:
+    needs: [flake8, isort]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1.1.1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: sudo apt-get install libmemcached-dev
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+      - name: Install MySQL
+        run: |
+          sudo apt-get install -y mysql-server libmysqlclient-dev
+          sudo service mysql stop
+          echo "[mysqld]" | sudo tee -a /etc/mysql/my.cnf
+          echo "skip-grant-tables" | sudo tee -a /etc/mysql/my.cnf
+          sudo service mysql start
+      - run: python -m pip install -r tests/requirements/mysql.txt
+      - run: tests/runtests.py --settings=tests.test_mysql
+
+  MariaDB:
+    needs: [flake8, isort]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1.1.1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: sudo apt-get install libmemcached-dev
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+      - name: Install MariaDB
+        run: |
+          sudo apt-get install -y mariadb-server mariadb-server-10.1 mariadb-client libmariadbclient-dev
+          sudo service mariadb stop
+          echo "[mysqld]" | sudo tee -a /etc/mysql/my.cnf
+          echo "skip-grant-tables" | sudo tee -a /etc/mysql/my.cnf
+          sudo service apparmor reload
+          sudo service mariadb start
+      - run: python -m pip install -r tests/requirements/mysql.txt
+      - run: tests/runtests.py --settings=tests.test_mysql
+
+  Selenium:
+    needs: [flake8, isort]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, chrome]
+    steps:
+      - uses: actions/setup-python@v1.1.1
+      - run: sudo apt-get install libmemcached-dev
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+      - run: sudo apt-get install -y google-chrome-stable firefox
+      - run: |
+          mkdir bin
+          curl -O "https://chromedriver.storage.googleapis.com/$(curl https://chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip"
+          unzip chromedriver_linux64.zip -d bin
+        if: matrix.browser == 'chrome'
+      - run: |
+          mkdir bin
+          curl -LO https://github.com/mozilla/geckodriver/releases/download/v0.26.0/geckodriver-v0.26.0-linux64.tar.gz
+          tar -xzf geckodriver-v0.26.0-linux64.tar.gz -C bin
+        if: matrix.browser == 'firefox'
+      - run: PATH=$PATH:$(pwd)/bin tests/runtests.py --selenium=${{ matrix.browser }} --headless
