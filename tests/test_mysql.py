@@ -11,19 +11,32 @@
 # situations, so it is recommended to run the test suite against as many
 # database backends as possible.  You may want to create a separate settings
 # file for each of the backends you test against.
+import os
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'USER': 'django',
-        'PASSWORD': '',
-        'OPTIONS': {'charset': 'latin1', 'use_unicode': True},
+        'HOST': '127.0.0.1',
+        'PORT': int(os.getenv('DB_PORT', 3306)),
+        'USER': 'root',
+        'PASSWORD': 'django',
+        'TEST': {
+            'NAME': 'default_test_django',
+            'CHARSET': 'utf8',
+            'COLLATION': 'utf8_general_ci',
+        },
     },
     'other': {
         'ENGINE': 'django.db.backends.mysql',
-        'USER': 'django',
-        'PASSWORD': '',
-        'OPTIONS': {'charset': 'latin1', 'use_unicode': True},
+        'HOST': '127.0.0.1',
+        'PORT': int(os.getenv('DB_PORT', 3306)),
+        'USER': 'root',
+        'PASSWORD': 'django',
+        'TEST': {
+            'NAME': 'other_test_django',
+            'CHARSET': 'utf8',
+            'COLLATION': 'utf8_general_ci',
+        },
     }
 }
 

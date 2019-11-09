@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/setup-python@v1.1.1
       - uses: actions/checkout@v1
-      - run: python -m pip install --upgrade isort
+      - run: python -m pip install isort
       - run: isort --recursive --check-only --diff django tests scripts
 
   docs:
@@ -32,30 +32,39 @@ jobs:
 
   SQLite:
     needs: [flake8, isort]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8]
-        os:
-          - ubuntu-latest
-        # we currently test windows only on Python 3.8
-        # - windows-latest
-        # we currently don't test on MacOS
-        # - macos-latest
     steps:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1.1.1
         with:
           python-version: ${{ matrix.python-version }}
       - run: sudo apt-get install libmemcached-dev
-        if: matrix.os == 'ubuntu-latest'
-      - run: brew install libmemcached
-        if: matrix.os == 'macos-latest'
       - uses: actions/checkout@v1
       - run: |
           python setup.py develop
           python -m pip install -r tests/requirements/py3.txt
-      - run: tests/runtests.py
+      - run: tests/runtests.py --verbosity=2
+
+  SpatiaLite:
+    needs: [SQLite]
+    runs-on: ubuntu-latest
+    # GitHub's Python is not build with --enable-loadable-sqlite-extensions
+    # and therefore does not support SpatiaLite.
+    container: python:3.8.0-buster
+    strategy:
+      matrix:
+        python-version: [3.8]
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y libmemcached-dev libsqlite3-mod-spatialite binutils libproj-dev gdal-bin
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+      - run: tests/runtests.py --verbosity=2 --settings=tests.test_spatialite
 
   Windows:
     needs: [flake8, isort]
@@ -72,7 +81,7 @@ jobs:
       - run: |
           python setup.py develop
           python -m pip install -r tests/requirements/py3.txt
-      - run: tests/runtests.py
+      - run: tests/runtests.py --verbosity=2
 
   macOS:
     needs: [flake8, isort]
@@ -90,16 +99,24 @@ jobs:
       - run: |
           python setup.py develop
           python -m pip install -r tests/requirements/py3.txt
-      - run: |
-          python -c "import sqlite3; print(sqlite3.sqlite_version)"
-          tests/runtests.py
+      - run: python -c "import sqlite3; print(sqlite3.sqlite_version)"
+      - run: tests/runtests.py --verbosity=2
 
   PostgreSQL:
     needs: [flake8, isort]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.8]
+    services:
+      postgres:
+        image: postgres:9.5
+        env:
+          POSTGRES_USER: django
+          POSTGRES_PASSWORD: django
+        ports:
+          - 5432/tcp
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1.1.1
@@ -110,19 +127,17 @@ jobs:
       - run: |
           python setup.py develop
           python -m pip install -r tests/requirements/py3.txt
-      - name: Install PostgreSQL
-        run: |
-          sudo apt-get install -y postgresql
-          sudo -u postgres createuser -s -w runner
-      - run: python -m pip install -r tests/requirements/postgres.txt
-      - run: tests/runtests.py --settings=tests.test_postgres -v3 --parallel=1
+          python -m pip install -r tests/requirements/postgres.txt
+      - run: tests/runtests.py --verbosity=2 --settings=tests.test_postgres
+        env:
+          DB_PORT: ${{ job.services.postgres.ports[5432] }}
 
   PostGIS:
     needs: [postgresql]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.8]
     steps:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1.1.1
@@ -133,65 +148,129 @@ jobs:
       - run: |
           python setup.py develop
           python -m pip install -r tests/requirements/py3.txt
-      - name: Install PostgreSQL
+      # There is no official PostGIS container, therefore we install PostGIS on the VM.
+      - name: Set up PostGIS
         run: |
           sudo apt-get install -y postgis
           sudo -u postgres createuser -s -w runner
       - run: python -m pip install -r tests/requirements/postgres.txt
-      - run: tests/runtests.py --settings=tests.test_postgis -v3
+      - run: tests/runtests.py --verbosity=2 --settings=tests.test_postgis
 
   MySQL:
     needs: [flake8, isort]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.8]
+    services:
+      mysql:
+        image: mysql:5.6
+        ports:
+          - 3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+        env:
+          MYSQL_ROOT_PASSWORD: django
     steps:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1.1.1
         with:
           python-version: ${{ matrix.python-version }}
-      - run: sudo apt-get install libmemcached-dev
+      - run: sudo apt-get install libmemcached-dev libmysqlclient-dev
       - uses: actions/checkout@v1
       - run: |
           python setup.py develop
           python -m pip install -r tests/requirements/py3.txt
-      - name: Install MySQL
-        run: |
-          sudo apt-get install -y mysql-server libmysqlclient-dev
-          sudo service mysql stop
-          echo "[mysqld]" | sudo tee -a /etc/mysql/my.cnf
-          echo "skip-grant-tables" | sudo tee -a /etc/mysql/my.cnf
-          sudo service mysql start
-      - run: python -m pip install -r tests/requirements/mysql.txt
-      - run: tests/runtests.py --settings=tests.test_mysql
+          python -m pip install -r tests/requirements/mysql.txt
+      - run: tests/runtests.py --verbosity=2 --settings=tests.test_mysql
+        env:
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+
+  MySQL-GIS:
+    needs: [MySQL]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+    services:
+      mysql:
+        image: mysql:5.6
+        ports:
+          - 3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+        env:
+          MYSQL_ROOT_PASSWORD: django
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1.1.1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: sudo apt-get install libmemcached-dev libmysqlclient-dev binutils libproj-dev gdal-bin
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+          python -m pip install -r tests/requirements/mysql.txt
+      - run: tests/runtests.py --verbosity=2 --settings=tests.test_mysql_gis
+        env:
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
 
   MariaDB:
     needs: [flake8, isort]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.8]
+    services:
+      mariadb:
+        image: mariadb:10.2
+        ports:
+          - 3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+        env:
+          MYSQL_ROOT_PASSWORD: django
     steps:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1.1.1
         with:
           python-version: ${{ matrix.python-version }}
-      - run: sudo apt-get install libmemcached-dev
+      - run: sudo apt-get install libmemcached-dev libmariadbclient-dev
       - uses: actions/checkout@v1
       - run: |
           python setup.py develop
           python -m pip install -r tests/requirements/py3.txt
-      - name: Install MariaDB
-        run: |
-          sudo apt-get install -y mariadb-server mariadb-server-10.1 mariadb-client libmariadbclient-dev
-          sudo service mariadb stop
-          echo "[mysqld]" | sudo tee -a /etc/mysql/my.cnf
-          echo "skip-grant-tables" | sudo tee -a /etc/mysql/my.cnf
-          sudo service apparmor reload
-          sudo service mariadb start
-      - run: python -m pip install -r tests/requirements/mysql.txt
-      - run: tests/runtests.py --settings=tests.test_mysql
+          python -m pip install -r tests/requirements/mysql.txt
+      - run: tests/runtests.py --verbosity=2 --settings=tests.test_mysql
+        env:
+          DB_PORT: ${{ job.services.mariadb.ports['3306'] }}
+
+  MariaDB-GIS:
+    needs: [MariaDB]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+    services:
+      mariadb:
+        image: mariadb:10.2
+        ports:
+          - 3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+        env:
+          MYSQL_ROOT_PASSWORD: django
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1.1.1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: sudo apt-get install libmemcached-dev libmariadbclient-dev binutils libproj-dev gdal-bin
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+          python -m pip install -r tests/requirements/mysql.txt
+      - run: tests/runtests.py --verbosity=2 --settings=tests.test_mysql_gis
+        env:
+          DB_PORT: ${{ job.services.mariadb.ports['3306'] }}
 
   Selenium:
     needs: [flake8, isort]
@@ -204,18 +283,23 @@ jobs:
       - uses: actions/setup-python@v1.1.1
       - run: sudo apt-get install libmemcached-dev
       - uses: actions/checkout@v1
-      - run: |
-          python setup.py develop
-          python -m pip install -r tests/requirements/py3.txt
       - run: sudo apt-get install -y google-chrome-stable firefox
+        if: matrix.browser == 'chrome'
+      - run: sudo apt-get install -y firefox
+        if: matrix.browser == 'firefox'
       - run: |
           mkdir bin
           curl -O "https://chromedriver.storage.googleapis.com/$(curl https://chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip"
           unzip chromedriver_linux64.zip -d bin
         if: matrix.browser == 'chrome'
+        name: Set up chromedriver
       - run: |
           mkdir bin
           curl -LO https://github.com/mozilla/geckodriver/releases/download/v0.26.0/geckodriver-v0.26.0-linux64.tar.gz
           tar -xzf geckodriver-v0.26.0-linux64.tar.gz -C bin
         if: matrix.browser == 'firefox'
-      - run: PATH=$PATH:$(pwd)/bin tests/runtests.py --selenium=${{ matrix.browser }} --headless
+        name: Set up geckodriver
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+      - run: PATH=$PATH:$(pwd)/bin tests/runtests.py --verbosity=2 --selenium=${{ matrix.browser }} --headless

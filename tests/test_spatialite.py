@@ -14,19 +14,11 @@
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'default_django',
-        'TEST': {
-            'NAME': 'default_test_django',
-        },
+        'ENGINE': 'django.contrib.gis.db.backends.spatialite',
     },
     'other': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'other_django',
-        'TEST': {
-            'NAME': 'other_test_django',
-        },
-    },
+        'ENGINE': 'django.contrib.gis.db.backends.spatialite',
+    }
 }
 
 SECRET_KEY = "django_tests_secret_key"

@@ -11,22 +11,33 @@
 # situations, so it is recommended to run the test suite against as many
 # database backends as possible.  You may want to create a separate settings
 # file for each of the backends you test against.
+import os
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'default_django',
+        'ENGINE': 'django.contrib.gis.db.backends.mysql',
+        'HOST': '127.0.0.1',
+        'PORT': int(os.getenv('DB_PORT', 3306)),
+        'USER': 'root',
+        'PASSWORD': 'django',
         'TEST': {
             'NAME': 'default_test_django',
+            'CHARSET': 'utf8',
+            'COLLATION': 'utf8_general_ci',
         },
     },
     'other': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'other_django',
+        'ENGINE': 'django.contrib.gis.db.backends.mysql',
+        'HOST': '127.0.0.1',
+        'PORT': int(os.getenv('DB_PORT', 3306)),
+        'USER': 'root',
+        'PASSWORD': 'django',
         'TEST': {
             'NAME': 'other_test_django',
+            'CHARSET': 'utf8',
+            'COLLATION': 'utf8_general_ci',
         },
-    },
+    }
 }
 
 SECRET_KEY = "django_tests_secret_key"
