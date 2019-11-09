@@ -74,6 +74,26 @@ jobs:
           python -m pip install -r tests/requirements/py3.txt
       - run: tests/runtests.py
 
+  macOS:
+    needs: [flake8, isort]
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1.1.1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: brew install libmemcached
+      - uses: actions/checkout@v1
+      - run: |
+          python setup.py develop
+          python -m pip install -r tests/requirements/py3.txt
+      - run: |
+          python -c "import sqlite3; print(sqlite3.sqlite_version)"
+          tests/runtests.py
+
   PostgreSQL:
     needs: [flake8, isort]
     runs-on: ubuntu-latest
