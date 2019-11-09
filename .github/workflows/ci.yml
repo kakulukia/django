@@ -64,7 +64,8 @@ jobs:
       - run: |
           python setup.py develop
           python -m pip install -r tests/requirements/py3.txt
-      - run: tests/runtests.py --verbosity=2 --settings=tests.test_spatialite
+      - run: adduser runner
+      - run: runuser runner -c 'tests/runtests.py --verbosity=2 --settings=tests.test_spatialite'
 
   Windows:
     needs: [flake8, isort]
