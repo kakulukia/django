@@ -3,6 +3,8 @@ on: [push, pull_request]
 jobs:
 
   flake8:
+    needs:
+      macOS
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-python@v1.1.1
@@ -85,7 +87,7 @@ jobs:
       - run: tests/runtests.py --verbosity=2
 
   macOS:
-    needs: [flake8, isort]
+#    needs: [flake8, isort]
     runs-on: macos-latest
     strategy:
       matrix:
@@ -95,7 +97,8 @@ jobs:
         uses: actions/setup-python@v1.1.1
         with:
           python-version: ${{ matrix.python-version }}
-      - run: brew install libmemcached
+      - run: brew update
+      - run: brew install libmemcached sqlite
       - uses: actions/checkout@v1
       - run: |
           python setup.py develop
