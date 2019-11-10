@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.test import modify_settings
 from django.test.selenium import SeleniumTestCase
@@ -97,14 +99,34 @@ class AdminSeleniumTestCase(SeleniumTestCase, StaticLiveServerTestCase):
             timeout
         )
 
-    def wait_page_loaded(self):
+    def wait_page_ready(self, timeout=10):
+        """
+        Block until page has started to load.
+        """
+        self.wait_until(
+            lambda driver: driver.execute_script('return document.readyState;') == 'complete',
+            timeout
+        )
+
+    @contextmanager
+    def wait_page_loaded(self, timeout=10):
         """
         Block until page has started to load.
         """
         from selenium.common.exceptions import TimeoutException
+        from selenium.webdriver.support import expected_conditions as ec
+
         try:
+            old_page = self.selenium.find_element_by_tag_name('html')
+            yield
             # Wait for the next page to be loaded
-            self.wait_for('body')
+            self.wait_until(ec.staleness_of(old_page), timeout=timeout)
+            self.wait_until(
+                lambda driver:
+                    driver.execute_script('return document.readyState;') == 'complete',
+                timeout=timeout
+
+            )
         except TimeoutException:
             # IE7 occasionally returns an error "Internet Explorer cannot
             # display the webpage" and doesn't load the next page. We just
@@ -121,9 +143,8 @@ class AdminSeleniumTestCase(SeleniumTestCase, StaticLiveServerTestCase):
         password_input = self.selenium.find_element_by_name('password')
         password_input.send_keys(password)
         login_text = _('Log in')
-        self.selenium.find_element_by_xpath(
-            '//input[@value="%s"]' % login_text).click()
-        self.wait_page_loaded()
+        with self.wait_page_loaded():
+            self.selenium.find_element_by_xpath('//input[@value="%s"]' % login_text).click()
 
     def get_css_value(self, selector, attribute):
         """
@@ -138,12 +159,13 @@ class AdminSeleniumTestCase(SeleniumTestCase, StaticLiveServerTestCase):
         Return the <OPTION> with the value `value` inside the <SELECT> widget
         identified by the CSS selector `selector`.
         """
-        from selenium.common.exceptions import NoSuchElementException
-        options = self.selenium.find_elements_by_css_selector('%s > option' % selector)
-        for option in options:
-            if option.get_attribute('value') == value:
-                return option
-        raise NoSuchElementException('Option "%s" not found in "%s"' % (value, selector))
+        return self.selenium.find_element_by_css_selector('%s > option[value="%s"]' % (selector, value))
+
+    def select_option(self, select_tag_css_selector, value):
+        from selenium.webdriver.support.ui import Select
+
+        select = Select(self.selenium.find_element_by_css_selector(select_tag_css_selector))
+        select.select_by_value(value)
 
     def _assertOptionsValues(self, options_selector, values):
         if values:

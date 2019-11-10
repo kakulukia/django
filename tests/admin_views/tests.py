@@ -4491,8 +4491,10 @@ class SeleniumTests(AdminSeleniumTestCase):
             len(self.selenium.find_elements_by_class_name('select2-selection')),
             num_initial_select2_inputs + 2
         )
+        # ff-bug: we need to scroll from bottom up to make sure the options are in the viewport
+        self.selenium.execute_script("window.scrollTo(0, document.body.scrollHeight)")
         self.selenium.find_element_by_id('id_relatedprepopulated_set-1-pubdate').send_keys('1999-01-25')
-        self.get_select_option('#id_relatedprepopulated_set-1-status', 'option two').click()
+        self.select_option('#id_relatedprepopulated_set-1-status', 'option two')
         self.selenium.find_element_by_id('id_relatedprepopulated_set-1-name').send_keys(
             ' now you haVe anöther   sŤāÇkeð  inline with a very ... '
             'loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooog text... '
@@ -4507,7 +4509,7 @@ class SeleniumTests(AdminSeleniumTestCase):
         # Tabular inlines ----------------------------------------------------
         # Initial inline
         self.selenium.find_element_by_id('id_relatedprepopulated_set-2-0-pubdate').send_keys('1234-12-07')
-        self.get_select_option('#id_relatedprepopulated_set-2-0-status', 'option two').click()
+        self.select_option('#id_relatedprepopulated_set-2-0-status', 'option two')
         self.selenium.find_element_by_id('id_relatedprepopulated_set-2-0-name').send_keys(
             'And now, with a tÃbűlaŘ inline !!!'
         )
@@ -4540,8 +4542,8 @@ class SeleniumTests(AdminSeleniumTestCase):
             num_initial_select2_inputs + 6
         )
         # Save and check that everything is properly stored in the database
-        self.selenium.find_element_by_xpath('//input[@value="Save"]').click()
-        self.wait_page_loaded()
+        with self.wait_page_loaded():
+            self.selenium.find_element_by_xpath('//input[@value="Save"]').click()
         self.assertEqual(MainPrepopulated.objects.all().count(), 1)
         MainPrepopulated.objects.get(
             name=' this is the mAin nÀMë and it\'s awεšomeııı',
@@ -4608,8 +4610,8 @@ class SeleniumTests(AdminSeleniumTestCase):
         self.assertEqual(slug2, 'option-two-main-name-best')
 
         # Save the object
-        self.selenium.find_element_by_xpath('//input[@value="Save"]').click()
-        self.wait_page_loaded()
+        with self.wait_page_loaded():
+            self.selenium.find_element_by_xpath('//input[@value="Save"]').click()
 
         self.selenium.get(object_url)
         self.selenium.find_element_by_id('id_name').send_keys(' hello')
@@ -4637,9 +4639,9 @@ class SeleniumTests(AdminSeleniumTestCase):
         # First form field has a single widget
         self.admin_login(username='super', password='secret', login_url=reverse('admin:index'))
         self.selenium.get(self.live_server_url + reverse('admin:admin_views_picture_add'))
-        self.assertEqual(
-            self.selenium.switch_to.active_element,
-            self.selenium.find_element_by_id('id_name')
+        self.wait_until(
+            lambda selenium:
+                selenium.switch_to.active_element == selenium.find_element_by_id('id_name')
         )
 
         # First form field has a MultiWidget
