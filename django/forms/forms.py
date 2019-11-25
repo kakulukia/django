@@ -131,7 +131,7 @@ class BaseForm:
         self.fields = fields
 
     def __str__(self):
-        return self.as_table()
+        return self.render()
 
     def __repr__(self):
         if self._errors is None:
@@ -266,35 +266,46 @@ class BaseForm:
                 output.append(str_hidden)
         return mark_safe('\n'.join(output))
 
-    def as_table(self):
-        "Return this form rendered as HTML <tr>s -- excluding the <table></table>."
-        return self._html_output(
-            normal_row='<tr%(html_class_attr)s><th>%(label)s</th><td>%(errors)s%(field)s%(help_text)s</td></tr>',
-            error_row='<tr><td colspan="2">%s</td></tr>',
-            row_ender='</td></tr>',
-            help_text_html='<br><span class="helptext">%s</span>',
-            errors_on_separate_row=False,
-        )
+    def get_context(self):
+        bound_fields = []
+        hidden_fields = []
+        top_errors = self.non_field_errors()
+        for name, field in self.fields.items():
+            bf = self[name]
+            bf_errors = self.error_class(bf.errors)
+            if bf.is_hidden:
+                if bf_errors:
+                    top_errors.extend(
+                        [_('(Hidden field %(name)s) %(error)s') % {'name': name, 'error': str(e)}
+                         for e in bf_errors])
+                hidden_fields.append(bf)
+            else:
+                bound_fields.append((bf, mark_safe(str(bf_errors))))
+        return {
+            'form': self,
+            'fields': bound_fields,
+            'hidden_fields': hidden_fields,
+            'errors': top_errors,
+            'error_css_class': getattr(self, 'error_css_class', 'errorlist'),
+        }
 
-    def as_ul(self):
-        "Return this form rendered as HTML <li>s -- excluding the <ul></ul>."
-        return self._html_output(
-            normal_row='<li%(html_class_attr)s>%(errors)s%(label)s %(field)s%(help_text)s</li>',
-            error_row='<li>%s</li>',
-            row_ender='</li>',
-            help_text_html=' <span class="helptext">%s</span>',
-            errors_on_separate_row=False,
-        )
+    def render(self, template_name='django/forms/default.html', renderer=None):
+        return mark_safe((renderer or self.renderer).render(
+            template_name,
+            self.get_context(),
+        ))
 
-    def as_p(self):
-        "Return this form rendered as HTML <p>s."
-        return self._html_output(
-            normal_row='<p%(html_class_attr)s>%(label)s %(field)s%(help_text)s</p>',
-            error_row='%s',
-            row_ender='</p>',
-            help_text_html=' <span class="helptext">%s</span>',
-            errors_on_separate_row=True,
-        )
+    def as_table(self, renderer=None):
+        """Return this form rendered as HTML <tr>s -- excluding the <table></table>."""
+        return self.render('django/forms/table.html', renderer=renderer)
+
+    def as_ul(self, renderer=None):
+        """Return this form rendered as HTML <li>s -- excluding the <ul></ul>."""
+        return self.render('django/forms/ul.html', renderer=renderer)
+
+    def as_p(self, renderer=None):
+        """Return this form rendered as HTML <p>s."""
+        return self.render('django/forms/p.html', renderer=renderer)
 
     def non_field_errors(self):
         """

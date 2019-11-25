@@ -3,8 +3,10 @@ from collections import UserList
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.forms.renderers import get_default_renderer
 from django.utils import timezone
 from django.utils.html import escape, format_html, format_html_join, html_safe
+from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
 
@@ -105,21 +107,21 @@ class ErrorList(UserList, list):
     def as_json(self, escape_html=False):
         return json.dumps(self.get_json_data(escape_html))
 
-    def as_ul(self):
-        if not self.data:
-            return ''
+    def render(self, template_name='django/forms/errors/default.html', renderer=None):
+        renderer = renderer or get_default_renderer()
+        return mark_safe(renderer.render(template_name, {
+            'errors': self,
+            'error_class': self.error_class,
+        }))
 
-        return format_html(
-            '<ul class="{}">{}</ul>',
-            self.error_class,
-            format_html_join('', '<li>{}</li>', ((e,) for e in self))
-        )
+    def as_ul(self, renderer=None):
+        return self.render('django/forms/errors/ul.html', renderer=renderer)
 
     def as_text(self):
         return '\n'.join('* %s' % e for e in self)
 
     def __str__(self):
-        return self.as_ul()
+        return self.render()
 
     def __repr__(self):
         return repr(list(self))

@@ -3333,7 +3333,7 @@ Good luck picking a username that doesn&#x27;t already exist.</p>
             '* Foo\n* Foobar'
         )
 
-        self.assertEqual(
+        self.assertHTMLEqual(
             e.as_ul(),
             '<ul class="errorlist"><li>Foo</li><li>Foobar</li></ul>'
         )
@@ -3349,7 +3349,7 @@ Good luck picking a username that doesn&#x27;t already exist.</p>
         e = ErrorList()
         e.append('Foo')
         e.append(ValidationError('Foo%(bar)s', code='foobar', params={'bar': 'bar'}))
-        self.assertEqual(
+        self.assertHTMLEqual(
             e.as_ul(),
             '<ul class="errorlist"><li>Foo</li><li>Foobar</li></ul>'
         )
@@ -3358,7 +3358,7 @@ Good luck picking a username that doesn&#x27;t already exist.</p>
         e = ErrorList(error_class='foobar-error-class')
         e.append('Foo')
         e.append(ValidationError('Foo%(bar)s', code='foobar', params={'bar': 'bar'}))
-        self.assertEqual(
+        self.assertHTMLEqual(
             e.as_ul(),
             '<ul class="errorlist foobar-error-class"><li>Foo</li><li>Foobar</li></ul>'
         )
