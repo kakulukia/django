@@ -958,9 +958,9 @@ Java</label></li>
         f = SongFormHidden(MultiValueDict({'name': ['Yesterday'], 'composers': ['J', 'P']}), auto_id=False)
         self.assertHTMLEqual(
             f.as_ul(),
-            """<li>Name: <input type="text" name="name" value="Yesterday" required>
+            """<li>Name: <input type="text" name="name" value="Yesterday" required></li>
 <input type="hidden" name="composers" value="J">
-<input type="hidden" name="composers" value="P"></li>"""
+<input type="hidden" name="composers" value="P">"""
         )
 
         # When using CheckboxSelectMultiple, the framework expects a list of input and
@@ -1416,18 +1416,18 @@ value="Should escape &lt; &amp; &gt; and &lt;script&gt;alert(&#x27;xss&#x27;)&lt
             """<tr><th>First name:</th><td><input type="text" name="first_name" required></td></tr>
 <tr><th>Last name:</th><td><input type="text" name="last_name" required></td></tr>
 <tr><th>Birthday:</th>
-<td><input type="text" name="birthday" required><input type="hidden" name="hidden_text"></td></tr>"""
+<td><input type="text" name="birthday" required></td></tr><input type="hidden" name="hidden_text">"""
         )
         self.assertHTMLEqual(
             p.as_ul(),
             """<li>First name: <input type="text" name="first_name" required></li>
 <li>Last name: <input type="text" name="last_name" required></li>
-<li>Birthday: <input type="text" name="birthday" required><input type="hidden" name="hidden_text"></li>"""
+<li>Birthday: <input type="text" name="birthday" required></li><input type="hidden" name="hidden_text">"""
         )
         self.assertHTMLEqual(
             p.as_p(), """<p>First name: <input type="text" name="first_name" required></p>
 <p>Last name: <input type="text" name="last_name" required></p>
-<p>Birthday: <input type="text" name="birthday" required><input type="hidden" name="hidden_text"></p>"""
+<p>Birthday: <input type="text" name="birthday" required></p><input type="hidden" name="hidden_text">"""
         )
 
         # With auto_id set, a HiddenInput still gets an ID, but it doesn't get a label.
@@ -1440,7 +1440,7 @@ value="Should escape &lt; &amp; &gt; and &lt;script&gt;alert(&#x27;xss&#x27;)&lt
 <input type="text" name="last_name" id="id_last_name" required></td></tr>
 <tr><th><label for="id_birthday">Birthday:</label></th><td>
 <input type="text" name="birthday" id="id_birthday" required>
-<input type="hidden" name="hidden_text" id="id_hidden_text"></td></tr>"""
+</td></tr><input type="hidden" name="hidden_text" id="id_hidden_text">"""
         )
         self.assertHTMLEqual(
             p.as_ul(),
@@ -1450,7 +1450,7 @@ value="Should escape &lt; &amp; &gt; and &lt;script&gt;alert(&#x27;xss&#x27;)&lt
 <input type="text" name="last_name" id="id_last_name" required></li>
 <li><label for="id_birthday">Birthday:</label>
 <input type="text" name="birthday" id="id_birthday" required>
-<input type="hidden" name="hidden_text" id="id_hidden_text"></li>"""
+</li><input type="hidden" name="hidden_text" id="id_hidden_text">"""
         )
         self.assertHTMLEqual(
             p.as_p(),
@@ -1460,7 +1460,7 @@ value="Should escape &lt; &amp; &gt; and &lt;script&gt;alert(&#x27;xss&#x27;)&lt
 <input type="text" name="last_name" id="id_last_name" required></p>
 <p><label for="id_birthday">Birthday:</label>
 <input type="text" name="birthday" id="id_birthday" required>
-<input type="hidden" name="hidden_text" id="id_hidden_text"></p>"""
+</p><input type="hidden" name="hidden_text" id="id_hidden_text">"""
         )
 
         # If a field with a HiddenInput has errors, the as_table() and as_ul() output
@@ -1475,7 +1475,7 @@ value="Should escape &lt; &amp; &gt; and &lt;script&gt;alert(&#x27;xss&#x27;)&lt
 <tr><th>First name:</th><td><input type="text" name="first_name" value="John" required></td></tr>
 <tr><th>Last name:</th><td><input type="text" name="last_name" value="Lennon" required></td></tr>
 <tr><th>Birthday:</th><td><input type="text" name="birthday" value="1940-10-9" required>
-<input type="hidden" name="hidden_text"></td></tr>"""
+</td></tr><input type="hidden" name="hidden_text">"""
         )
         self.assertHTMLEqual(
             p.as_ul(),
@@ -1483,7 +1483,7 @@ value="Should escape &lt; &amp; &gt; and &lt;script&gt;alert(&#x27;xss&#x27;)&lt
 <li>First name: <input type="text" name="first_name" value="John" required></li>
 <li>Last name: <input type="text" name="last_name" value="Lennon" required></li>
 <li>Birthday: <input type="text" name="birthday" value="1940-10-9" required>
-<input type="hidden" name="hidden_text"></li>"""
+</li><input type="hidden" name="hidden_text">"""
         )
         self.assertHTMLEqual(
             p.as_p(),
@@ -1491,7 +1491,7 @@ value="Should escape &lt; &amp; &gt; and &lt;script&gt;alert(&#x27;xss&#x27;)&lt
 <p>First name: <input type="text" name="first_name" value="John" required></p>
 <p>Last name: <input type="text" name="last_name" value="Lennon" required></p>
 <p>Birthday: <input type="text" name="birthday" value="1940-10-9" required>
-<input type="hidden" name="hidden_text"></p>"""
+</p><input type="hidden" name="hidden_text">"""
         )
 
         # A corner case: It's possible for a form to have only HiddenInputs.
@@ -2164,8 +2164,8 @@ Password: <input type="password" name="password" required>
             p.as_ul(),
             """<li>Username: <input type="text" name="username" maxlength="10" required>
 <span class="helptext">e.g., user@example.com</span></li>
-<li>Password: <input type="password" name="password" required>
-<input type="hidden" name="next" value="/"></li>"""
+<li>Password: <input type="password" name="password" required></li>
+<input type="hidden" name="next" value="/">"""
         )
 
     def test_subclassing_forms(self):
@@ -3374,23 +3374,23 @@ Good luck picking a username that doesn&#x27;t already exist.</p>
             """<li><ul class="errorlist nonfield">
 <li>(Hidden field last_name) This field is required.</li></ul></li><li>
 <label for="id_first_name">First name:</label>
-<input id="id_first_name" name="first_name" type="text" value="John" required>
-<input id="id_last_name" name="last_name" type="hidden"></li>"""
+<input id="id_first_name" name="first_name" type="text" value="John" required></li>
+<input id="id_last_name" name="last_name" type="hidden">"""
         )
         self.assertHTMLEqual(
             p.as_p(),
             """<ul class="errorlist nonfield"><li>(Hidden field last_name) This field is required.</li></ul>
 <p><label for="id_first_name">First name:</label>
-<input id="id_first_name" name="first_name" type="text" value="John" required>
-<input id="id_last_name" name="last_name" type="hidden"></p>"""
+<input id="id_first_name" name="first_name" type="text" value="John" required></p>
+<input id="id_last_name" name="last_name" type="hidden">"""
         )
         self.assertHTMLEqual(
             p.as_table(),
             """<tr><td colspan="2"><ul class="errorlist nonfield">
 <li>(Hidden field last_name) This field is required.</li></ul></td></tr>
 <tr><th><label for="id_first_name">First name:</label></th><td>
-<input id="id_first_name" name="first_name" type="text" value="John" required>
-<input id="id_last_name" name="last_name" type="hidden"></td></tr>"""
+<input id="id_first_name" name="first_name" type="text" value="John" required></td></tr>
+<input id="id_last_name" name="last_name" type="hidden">"""
         )
 
     def test_error_list_with_non_field_errors_has_correct_class(self):
@@ -3478,7 +3478,7 @@ Good luck picking a username that doesn&#x27;t already exist.</p>
             '<li><ul class="errorlist"><li>Foo &amp; &quot;bar&quot;!</li></ul>'
             '<label for="id_visible">Visible:</label> '
             '<input type="text" name="visible" value="b" id="id_visible" required>'
-            '<input type="hidden" name="hidden" value="a" id="id_hidden"></li>'
+            '</li><input type="hidden" name="hidden" value="a" id="id_hidden">'
         )
 
     def test_baseform_repr(self):
@@ -3681,14 +3681,14 @@ Good luck picking a username that doesn&#x27;t already exist.</p>
         self.assertHTMLEqual(
             f.as_p(),
             '<ul class="errorlist nonfield">'
-            '<li>(Hidden field data) This field is required.</li></ul>\n<p> '
-            '<input type="hidden" name="data" id="id_data"></p>'
+            '<li>(Hidden field data) This field is required.</li></ul>\n'
+            '<input type="hidden" name="data" id="id_data">'
         )
         self.assertHTMLEqual(
             f.as_table(),
             '<tr><td colspan="2"><ul class="errorlist nonfield">'
             '<li>(Hidden field data) This field is required.</li></ul>'
-            '<input type="hidden" name="data" id="id_data"></td></tr>'
+            '</td></tr><input type="hidden" name="data" id="id_data">'
         )
 
     def test_field_named_data(self):
