@@ -10,6 +10,7 @@ from django.forms.fields import Field, FileField
 from django.forms.utils import ErrorDict, ErrorList
 from django.forms.widgets import Media, MediaDefiningClass
 from django.utils.datastructures import MultiValueDict
+from django.utils.deprecation import RemovedInNextVersionWarning
 from django.utils.functional import cached_property
 from django.utils.html import conditional_escape, html_safe
 from django.utils.safestring import mark_safe
@@ -18,8 +19,6 @@ from django.utils.translation import gettext as _
 from .renderers import get_default_renderer
 
 __all__ = ('BaseForm', 'Form')
-
-from ..utils.deprecation import RemovedInNextVersionWarning
 
 
 class DeclarativeFieldsMetaclass(MediaDefiningClass):
@@ -70,6 +69,8 @@ class BaseForm:
     template_name_p = 'django/forms/p.html'
     template_name_table = 'django/forms/table.html'
     template_name_ul = 'django/forms/ul.html'
+
+    template_name_label = 'django/forms/label.html'
 
     def __init__(self, data=None, files=None, auto_id='id_%s', prefix=None,
                  initial=None, error_class=ErrorList, label_suffix=None,
@@ -313,23 +314,23 @@ class BaseForm:
             'errors': top_errors,
         }
 
-    def render(self, template_name=None, renderer=None, context=None):
+    def render(self, template_name=None, context=None, renderer=None):
         return mark_safe((renderer or self.renderer).render(
             template_name or self.template_name,
             context or self.get_context(),
         ))
 
-    def as_table(self, renderer=None):
+    def as_table(self):
         """Return this form rendered as HTML <tr>s -- excluding the <table></table>."""
-        return self.render(self.template_name_table, renderer=renderer)
+        return self.render(self.template_name_table)
 
-    def as_ul(self, renderer=None):
+    def as_ul(self):
         """Return this form rendered as HTML <li>s -- excluding the <ul></ul>."""
-        return self.render(self.template_name_ul, renderer=renderer)
+        return self.render(self.template_name_ul)
 
-    def as_p(self, renderer=None):
+    def as_p(self):
         """Return this form rendered as HTML <p>s."""
-        return self.render(self.template_name_p, renderer=renderer)
+        return self.render(self.template_name_p)
 
     def non_field_errors(self):
         """

@@ -83,6 +83,10 @@ class ErrorList(UserList, list):
     """
     A collection of errors that knows how to display itself in various formats.
     """
+
+    template_name = 'django/forms/errors/default.html'
+    template_name_ul = 'django/forms/errors/ul.html'
+
     def __init__(self, initlist=None, error_class=None):
         super().__init__(initlist)
 
@@ -107,15 +111,20 @@ class ErrorList(UserList, list):
     def as_json(self, escape_html=False):
         return json.dumps(self.get_json_data(escape_html))
 
-    def render(self, template_name='django/forms/errors/default.html', renderer=None):
-        renderer = renderer or get_default_renderer()
-        return mark_safe(renderer.render(template_name, {
+    def get_context(self):
+        return {
             'errors': self,
             'error_class': self.error_class,
-        }))
+        }
 
-    def as_ul(self, renderer=None):
-        return self.render('django/forms/errors/ul.html', renderer=renderer)
+    def render(self, template_name=None, context=None, renderer=None):
+        return mark_safe((renderer or get_default_renderer()).render(
+            template_name or self.template_name,
+            context or self.get_context(),
+        ))
+
+    def as_ul(self):
+        return self.render(self.template_name_ul)
 
     def as_text(self):
         return '\n'.join('* %s' % e for e in self)

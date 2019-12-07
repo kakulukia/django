@@ -161,7 +161,7 @@ class BoundField:
                 else:
                     attrs['class'] = self.form.required_css_class
 
-        return mark_safe(self.form.renderer.render('django/forms/label.html', {
+        return mark_safe(self.form.renderer.render(self.form.template_name_label, {
             'form': self.form,
             'field': self,
             'label': contents,
