@@ -201,7 +201,7 @@ class BaseForm:
     def _html_output(self, normal_row, error_row, row_ender, help_text_html, errors_on_separate_row):
         "Output HTML. Used by as_table(), as_ul(), as_p()."
         warnings.warn(
-            '`django.forms.BaseForm._html_output is deprecated` is deprecated.'
+            '`django.forms.BaseForm._html_output` is deprecated.'
             ' Please use the `render` and `get_context` methods.', RemovedInNextVersionWarning)
         top_errors = self.non_field_errors()  # Errors that should be displayed above all fields.
         output, hidden_fields = [], []
